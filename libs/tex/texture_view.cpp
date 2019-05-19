@@ -19,21 +19,13 @@ TEX_NAMESPACE_BEGIN
 
 TextureView::TextureView(std::size_t id, mve::CameraInfo const & camera,
     std::string const & image_file)
-    : id(id), image_file(image_file) {
+    : id(id), image_file(image_file)
+{}
 
-    mve::image::ImageHeaders header;
-    try {
-         header = mve::image::load_file_headers(image_file);
-    } catch (util::Exception e) {
-        std::cerr << "Could not load image header of " << image_file << std::endl;
-        std::cerr << e.what() << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
-
-    width = header.width;
-    height = header.height;
-
-    camera.fill_calibration(*projection, width, height);
+void
+TextureView::initialize(void) {
+    assert(image != NULL);
+    camera.fill_calibration(*projection, image.width(), image.height());
     camera.fill_camera_pos(*pos);
     camera.fill_viewing_direction(*viewdir);
     camera.fill_world_to_cam(*world_to_cam);
@@ -42,20 +34,20 @@ TextureView::TextureView(std::size_t id, mve::CameraInfo const & camera,
 void
 TextureView::generate_validity_mask(void) {
     assert(image != NULL);
-    validity_mask.resize(width * height, true);
-    mve::ByteImage::Ptr checked = mve::ByteImage::create(width, height, 1);
+    validity_mask.resize(image.width() * image.height(), true);
+    mve::ByteImage::Ptr checked = mve::ByteImage::create(image.width(), image.height(), 1);
 
     std::list<math::Vec2i> queue;
 
     /* Start from the corners. */
     queue.push_back(math::Vec2i(0,0));
     checked->at(0, 0, 0) = 255;
-    queue.push_back(math::Vec2i(0, height - 1));
-    checked->at(0, height - 1, 0) = 255;
-    queue.push_back(math::Vec2i(width - 1, 0));
-    checked->at(width - 1, 0, 0) = 255;
-    queue.push_back(math::Vec2i(width - 1, height - 1));
-    checked->at(width - 1, height - 1, 0) = 255;
+    queue.push_back(math::Vec2i(0, image.height() - 1));
+    checked->at(0, image.height() - 1, 0) = 255;
+    queue.push_back(math::Vec2i(image.width() - 1, 0));
+    checked->at(image.width() - 1, 0, 0) = 255;
+    queue.push_back(math::Vec2i(image.width() - 1, image.height() - 1));
+    checked->at(image.width() - 1, image.height() - 1, 0) = 255;
 
     while (!queue.empty()) {
         math::Vec2i pixel = queue.front();
@@ -70,7 +62,7 @@ TextureView::generate_validity_mask(void) {
         }
 
         if (sum == 0) {
-            validity_mask[x + y * width] = false;
+            validity_mask[x + y * image.width()] = false;
 
             std::vector<math::Vec2i> neighbours;
             neighbours.push_back(math::Vec2i(x + 1, y));
@@ -82,7 +74,7 @@ TextureView::generate_validity_mask(void) {
                 math::Vec2i npixel = neighbours[i];
                 int const nx = npixel[0];
                 int const ny = npixel[1];
-                if (0 <= nx && nx < width && 0 <= ny && ny < height) {
+                if (0 <= nx && nx < image.width() && 0 <= ny && ny < image.height()) {
                     if (checked->at(nx, ny, 0) == 0) {
                         queue.push_front(npixel);
                         checked->at(nx, ny, 0) = 255;
@@ -97,6 +89,7 @@ void
 TextureView::load_image(void) {
     if(image != NULL) return;
     image = mve::image::load_file(image_file);
+    initialize();
 }
 
 void
@@ -108,21 +101,22 @@ TextureView::generate_gradient_magnitude(void) {
 
 void
 TextureView::erode_validity_mask(void) {
+    assert(image != NULL)
     std::vector<bool> eroded_validity_mask(validity_mask);
 
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            if (x == 0 || x == width - 1 || y == 0 || y == height - 1) {
-                validity_mask[x + y * width] = false;
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            if (x == 0 || x == image.width() - 1 || y == 0 || y == image.height() - 1) {
+                validity_mask[x + y * image.width()] = false;
                 continue;
             }
 
-            if (validity_mask[x + y * width]) continue;
+            if (validity_mask[x + y * image.width()]) continue;
             for (int j = -1; j <= 1; ++j) {
                 for (int i = -1; i <= 1; ++i) {
                     int const nx = x + i;
                     int const ny = y + j;
-                    eroded_validity_mask[nx + ny * width] = false;
+                    eroded_validity_mask[nx + ny * image.width()] = false;
                 }
             }
         }
@@ -252,29 +246,30 @@ TextureView::get_face_info(math::Vec3f const & v1, math::Vec3f const & v2,
 
 bool
 TextureView::valid_pixel(math::Vec2f pixel) const {
+    assert(image != NULL)
     float const x = pixel[0];
     float const y = pixel[1];
 
     /* The center of a pixel is in the middle. */
-    bool valid = (x >= 0.0f && x < static_cast<float>(width - 1)
-        && y >= 0.0f && y < static_cast<float>(height - 1));
+    bool valid = (x >= 0.0f && x < static_cast<float>(image.width() - 1)
+        && y >= 0.0f && y < static_cast<float>(image.height() - 1));
 
-    if (valid && validity_mask.size() == static_cast<std::size_t>(width * height)) {
+    if (valid && validity_mask.size() == static_cast<std::size_t>(image.width() * image.height())) {
         /* Only pixel which can be correctly interpolated are valid. */
-        float cx = std::max(0.0f, std::min(static_cast<float>(width - 1), x));
-        float cy = std::max(0.0f, std::min(static_cast<float>(height - 1), y));
+        float cx = std::max(0.0f, std::min(static_cast<float>(image.width() - 1), x));
+        float cy = std::max(0.0f, std::min(static_cast<float>(image.height() - 1), y));
         int const floor_x = static_cast<int>(cx);
         int const floor_y = static_cast<int>(cy);
-        int const floor_xp1 = std::min(floor_x + 1, width - 1);
-        int const floor_yp1 = std::min(floor_y + 1, height - 1);
+        int const floor_xp1 = std::min(floor_x + 1, image.width() - 1);
+        int const floor_yp1 = std::min(floor_y + 1, image.height() - 1);
 
         /* We screw up if weights would be zero
          * e.g. we lose valid pixel in the border of images... */
 
-        valid = validity_mask[floor_x + floor_y * width] &&
-                validity_mask[floor_x + floor_yp1 * width] &&
-                validity_mask[floor_xp1 + floor_y * width] &&
-                validity_mask[floor_xp1 + floor_yp1 * width];
+        valid = validity_mask[floor_x + floor_y * image.width()] &&
+                validity_mask[floor_x + floor_yp1 * image.width()] &&
+                validity_mask[floor_xp1 + floor_y * image.width()] &&
+                validity_mask[floor_xp1 + floor_yp1 * image.width()];
     }
 
     return valid;
@@ -293,20 +288,20 @@ TextureView::export_triangle(math::Vec3f v1, math::Vec3f v2, math::Vec3f v3,
     Tri tri(p1, p2, p3);
 
     Rect<float> aabb = tri.get_aabb();
-    const int width = ceil(aabb.width());
-    const int height = ceil(aabb.height());
+    const int image.width() = ceil(aabb.image.width()());
+    const int image.height() = ceil(aabb.image.height()());
     const int left = floor(aabb.min_x);
     const int top = floor(aabb.max_y);
 
-    assert(width > 0 && height > 0);
-    mve::image::save_png_file(mve::image::crop(image, width, height, left, top,
+    assert(image.width() > 0 && image.height() > 0);
+    mve::image::save_png_file(mve::image::crop(image, image.width(), image.height(), left, top,
         *math::Vec3uc(255, 0, 255)), filename);
 }
 
 void
 TextureView::export_validity_mask(std::string const & filename) const {
-    assert(validity_mask.size() == static_cast<std::size_t>(width * height));
-    mve::ByteImage::Ptr img = mve::ByteImage::create(width, height, 1);
+    assert(validity_mask.size() == static_cast<std::size_t>(image.width() * image.height()));
+    mve::ByteImage::Ptr img = mve::ByteImage::create(image.width(), image.height(), 1);
     for (std::size_t i = 0; i < validity_mask.size(); ++i) {
         img->at(static_cast<int>(i), 0) = validity_mask[i] ? 255 : 0;
     }
