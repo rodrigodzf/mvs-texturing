@@ -44,8 +44,7 @@ class TextureView {
         math::Vec3f viewdir;
         math::Matrix3f projection;
         math::Matrix4f world_to_cam;
-        int width;
-        int height;
+        mve::CameraInfo camera;
         std::string image_file;
         mve::ByteImage::Ptr image;
         mve::ByteImage::Ptr gradient_magnitude;
@@ -139,12 +138,14 @@ TextureView::get_viewing_direction(void) const {
 
 inline int
 TextureView::get_width(void) const {
-    return width;
+    assert(image != NULL);
+    return image->width();
 }
 
 inline int
 TextureView::get_height(void) const {
-    return height;
+    assert(image != NULL);
+    return image->height();
 }
 
 inline mve::ByteImage::Ptr
@@ -189,7 +190,7 @@ TextureView::bind_image(mve::ByteImage::Ptr new_image) {
 
 inline void
 TextureView::release_validity_mask(void) {
-    assert(validity_mask.size() == static_cast<std::size_t>(width * height));
+    //assert(validity_mask.size() == static_cast<std::size_t>(width * height));
     validity_mask = std::vector<bool>();
 }
 

@@ -19,7 +19,7 @@ TEX_NAMESPACE_BEGIN
 
 TextureView::TextureView(std::size_t id, mve::CameraInfo const & camera,
     std::string const & image_file)
-    : id(id), image_file(image_file)
+    : id(id), camera(camera), image_file(image_file)
 {}
 
 void
@@ -101,7 +101,7 @@ TextureView::generate_gradient_magnitude(void) {
 
 void
 TextureView::erode_validity_mask(void) {
-    assert(image != NULL)
+    assert(image != NULL);
     std::vector<bool> eroded_validity_mask(validity_mask);
 
     for (int y = 0; y < image->height(); ++y) {
@@ -246,7 +246,7 @@ TextureView::get_face_info(math::Vec3f const & v1, math::Vec3f const & v2,
 
 bool
 TextureView::valid_pixel(math::Vec2f pixel) const {
-    assert(image != NULL)
+    assert(image != NULL);
     float const x = pixel[0];
     float const y = pixel[1];
 
@@ -288,13 +288,13 @@ TextureView::export_triangle(math::Vec3f v1, math::Vec3f v2, math::Vec3f v3,
     Tri tri(p1, p2, p3);
 
     Rect<float> aabb = tri.get_aabb();
-    const int image->width() = ceil(aabb.image->width()());
-    const int image->height() = ceil(aabb.image->height()());
+    const int width = ceil(aabb.width());
+    const int height = ceil(aabb.height());
     const int left = floor(aabb.min_x);
     const int top = floor(aabb.max_y);
 
-    assert(image->width() > 0 && image->height() > 0);
-    mve::image::save_png_file(mve::image::crop(image, image->width(), image->height(), left, top,
+    assert(width > 0 && height > 0);
+    mve::image::save_png_file(mve::image::crop(image, width, height, left, top,
         *math::Vec3uc(255, 0, 255)), filename);
 }
 
