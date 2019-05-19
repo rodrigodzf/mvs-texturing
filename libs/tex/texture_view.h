@@ -77,7 +77,7 @@ class TextureView {
         TextureView(std::size_t id, mve::CameraInfo const & camera, std::string const & image_file);
 
         /** Initializes the members of this class */
-        void TextureView::initialize(void);
+        void initialize(void);
 
         /** Returns the position. */
         math::Vec3f get_pos(void) const;
