@@ -186,6 +186,7 @@ TextureView::get_pixel_values(math::Vec2f const & pixel) const {
 inline void
 TextureView::bind_image(mve::ByteImage::Ptr new_image) {
     image = new_image;
+    initialize();
 }
 
 inline void
