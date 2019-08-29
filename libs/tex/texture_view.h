@@ -53,6 +53,9 @@ class TextureView {
 
 
     public:
+        /** Returns the camera for this texture view **/
+        mve::CameraInfo get_camera() const;
+
         /** Returns the id of the TexureView which is consistent for every run. */
         std::size_t get_id(void) const;
 
@@ -118,6 +121,9 @@ class TextureView {
         export_validity_mask(std::string const & filename) const;
 };
 
+inline mve::CameraInfo get_camera() const {
+  return camera;
+}
 
 inline std::size_t
 TextureView::get_id(void) const {
