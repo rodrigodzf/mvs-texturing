@@ -123,7 +123,8 @@ class TextureView {
         export_validity_mask(std::string const & filename) const;
 };
 
-inline mve::CameraInfo get_camera() const {
+inline mve::CameraInfo
+TextureView::get_camera(void) const {
   return camera;
 }
 
